@@ -32,7 +32,7 @@ FLOW = flow_from_clientsecrets(CLIENT_SECRETS,
 
 class Tracks2Cal(object):
 
-    def __init__(self, folder_name="My Tracks", cal_name="Logging"):
+    def __init__(self, folder_name="My Tracks", cal_name="My Tracks"):
         """Log in and create authorized service to use the Google API"""
 
         # Get/store OAuth crediendials
@@ -190,7 +190,7 @@ class Tracks2Cal(object):
 
         # If any of the events at this time have the same title as the event, it already exists
         if [x for x in r if x["summary"] == title]:
-            logging.debug("Event exists")
+            logging.debug("Event already exists, not adding")
             return True
 
         logging.debug("Event doesn't exist")
@@ -219,20 +219,27 @@ class Tracks2Cal(object):
         Finds all MyTracks files in Google Drive and creates events in
         Google Calendar according to their properties
         """
+        total = 0
+        added = 0
         for filename, file_data in self.kml_file_data():
             start, end, coords, desc = self.parse_kml_data(file_data)
+            total += 1
             if not self.event_exists(filename, start, end):
                 self.add_event(filename, start, end, coords, desc)
+                added += 1
+
+        logging.critical("Finished successfully!")
+        logging.critical("KML files were taken from the folder '%s' and added to the calendar '%s'" % (self.folder_name, self.cal_name))
+        logging.critical("%d new entries were added (from a total of %d parsed)" % (added, total,))
 
 def main():
     try:
-        Tracks2Cal(cal_name="TEST_CAL").run()
+        Tracks2Cal().run()
     except AccessTokenRefreshError:
         logging.critical("The credentials have been revoked or expired, please re-run the application to re-authorize")
 
 
 if __name__ == '__main__':
-    # https://google-api-client-libraries.appspot.com/documentation/drive/v2/python/latest/
-    # https://google-api-client-libraries.appspot.com/documentation/calendar/v3/python/latest/
     logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
+
     main()

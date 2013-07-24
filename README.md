@@ -32,3 +32,13 @@ This project uses OAuth to connect to Google
 `client_secrets.json` is used for storing OAuth information
 
 Until I figure out a way to properly distribute this data, it won't be included in the repository.
+
+Running the Script
+==================
+
+1.  Register for API access at `https://code.google.com/apis/console` and download the `client_secrets.json` file into the repository.
+2.  Activate the virtual environment.
+3.  Optional - Open the script and modify the `folder_name` and `cal_name` parameters to suit your setup.
+4.  Run the script.
+5.  Authorize the project to access your Google Drive and Google Calender.
+6.  Wait for all the KML files to be parsed and added to your calendar.
