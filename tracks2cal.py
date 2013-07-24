@@ -87,16 +87,22 @@ class Tracks2Cal(object):
         ns = kml_root.nsmap[None]
 
         # Get the placemarks (start, tour, end)
-        placemarks = kml_root.find("{%s}Document" % ns).findall("{%s}Placemark" % ns)
+        temp_placemarks = kml_root.find("{%s}Document" % ns).findall("{%s}Placemark" % ns)
 
         # Get the data from the placemarks
-        # TODO: Use the 'styleURL' ("#start", "#track", "#end") instead of indecies
-        start_time = self._get_placemark_time(placemarks[0], ns)
-        end_time = self._get_placemark_time(placemarks[2], ns)
-        desc = placemarks[2].find("{%s}description" % ns).text
+        # styleURLs "#start", "#track", and "#end" define the different placemarks
+        placemarks = {}
+        for p in temp_placemarks:
+            style = p.find("{%s}styleUrl" % ns)
+            if style is not None:
+                placemarks[style.text] = p
+
+        start_time = self._get_placemark_time(placemarks["#start"], ns)
+        end_time = self._get_placemark_time(placemarks["#end"], ns)
+        desc = placemarks["#end"].find("{%s}description" % ns).text
 
         # Convert "long,lat[,altitude]" to "lat,long"
-        temp = placemarks[0].find("{%s}Point" % ns).find("{%s}coordinates" % ns).text
+        temp = placemarks["#start"].find("{%s}Point" % ns).find("{%s}coordinates" % ns).text
         coords = ",".join(temp.split(",")[1::-1])
 
         return start_time, end_time, coords, desc
