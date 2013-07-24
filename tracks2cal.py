@@ -55,11 +55,24 @@ class Tracks2Cal(object):
         self.cal_name = cal_name
         self.cal_id = self.get_calendar_id()
 
+    def _get_paginated_data(self, fcn, kwargs={}):
+        """Handles pagination and returns all the data at once"""
+        page = None
+        items = []
+        while True:
+            r = fcn(pageToken=page, **kwargs).execute()
+            items.extend(r["items"])
+            page = r.get("nextPageToken", None)
+            if not page:
+                return items
+
     def get_calendar_id(self):
         """Get the calendar id to use when adding events"""
 
-        # TODO: pagination
-        for x in self.cal_service.calendarList().list().execute()["items"]:
+        # Look for the calendar (use pagination)
+        items = self._get_paginated_data(self.cal_service.calendarList().list)
+
+        for x in items:
             if x["summary"] == self.cal_name:
                 return x["id"]
         else:
@@ -114,21 +127,33 @@ class Tracks2Cal(object):
         Grabs the KML data from Google Drive and generates (filename, file_data) objects
         """
         try:
-            logging.debug("Opening the 'My Tracks' folder in Google Drive")
+            logging.debug("Opening the '%s' folder in Google Drive" % (self.folder_name,))
 
-            # Get the "My Tracks" folder id
-            folder = self.drive_service.files().list(q="mimeType='application/vnd.google-apps.folder' and title='%s'" % (self.folder_name,)).execute()["items"]
-            if not folder:
-                logging.critical("No '%s' folder found in Google Drive, exiting", (self.folder_name,))
+            # Get folder(s) matching the folder name
+            kwargs = dict(q="mimeType='application/vnd.google-apps.folder' and title='%s' and trashed=False" % (self.folder_name,))
+            folders = self._get_paginated_data(self.drive_service.files().list, kwargs)
+
+            # Filter out non-root folders
+            folders = [f for f in folders if [p for p in f["parents"] if p["isRoot"]]]
+
+            # Check for no/multiple folders
+            if not folders:
+                logging.critical("No '%s' folder found in the Google Drive root folder, exiting", (self.folder_name,))
+                return
+            elif len(folders) > 1:
+                logging.critical("More than 1 '%s' folders found, exiting" % (self.folder_name,))
                 return
 
-            folder_id = folder[0]["id"]
+            # Get the ID of the folder to work inside
+            folder_id = folders[0]["id"]
 
             logging.debug("Getting kml files in the folder")
 
             # Get the children of the My Tracks folder
-            # TODO: Pagination
-            for x in self.drive_service.children().list(folderId=folder_id, q="mimeType='application/vnd.google-earth.kml+xml' and trashed=False").execute()["items"]:
+            kwargs = dict(folderId=folder_id, q="mimeType='application/vnd.google-earth.kml+xml' and trashed=False")
+            items = self._get_paginated_data(self.drive_service.children().list, kwargs)
+
+            for x in items:
                 file_ = self.drive_service.files().get(fileId=x["id"]).execute()
 
                 filename_ext = file_["title"]
@@ -160,7 +185,8 @@ class Tracks2Cal(object):
         timeMax = (start + 2 * fuzz).strftime(TIME_OUT_FMT)
 
         # Get all events that exist in the start+fuzz to start+2*fuzz window
-        r = self.cal_service.events().list(calendarId=self.cal_id, timeMin=timeMin, timeMax=timeMax).execute()["items"]
+        kwargs = dict(calendarId=self.cal_id, timeMin=timeMin, timeMax=timeMax)
+        r = self._get_paginated_data(self.cal_service.events().list, kwargs)
 
         # If any of the events at this time have the same title as the event, it already exists
         if [x for x in r if x["summary"] == title]:
@@ -199,7 +225,6 @@ class Tracks2Cal(object):
                 self.add_event(filename, start, end, coords, desc)
 
 def main():
-
     try:
         Tracks2Cal(cal_name="TEST_CAL").run()
     except AccessTokenRefreshError:
