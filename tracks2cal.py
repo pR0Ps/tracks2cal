@@ -54,6 +54,7 @@ class Tracks2Cal(object):
         self.folder_name = folder_name
         self.cal_name = cal_name
         self.cal_id = self.get_calendar_id()
+        self.events = self.get_existing_events()
 
     def _get_paginated_data(self, fcn, kwargs={}):
         """Handles pagination and returns all the data at once"""
@@ -83,6 +84,17 @@ class Tracks2Cal(object):
             }
             r = self.cal_service.calendars().insert(body=cal_data).execute()
             return r["id"]
+
+    def get_existing_events(self):
+        """Get the events currently in the tracks calendar"""
+        temp = self._get_paginated_data(self.cal_service.events().list, dict(calendarId=self.cal_id))
+        ret = []
+        for x in temp:
+            ret.append((x["summary"],
+                datetime.datetime.strptime(x["start"]["dateTime"], TIME_OUT_FMT),
+                datetime.datetime.strptime(x["end"]["dateTime"], TIME_OUT_FMT)))
+
+        return ret
 
     def _get_placemark_time(self, placemark, ns):
         """Returns a datetime object representuing the time set in the placemark"""
@@ -179,19 +191,15 @@ class Tracks2Cal(object):
 
         logging.debug("Checking if event '%s' exists..." % (title,))
 
-        # Fuzz the times a bit to take rounding into account
-        fuzz = datetime.timedelta(seconds=1)
-        timeMin = (start + fuzz).strftime(TIME_OUT_FMT)
-        timeMax = (start + 2 * fuzz).strftime(TIME_OUT_FMT)
+        fuzz = datetime.timedelta(seconds=2)
 
-        # Get all events that exist in the start+fuzz to start+2*fuzz window
-        kwargs = dict(calendarId=self.cal_id, timeMin=timeMin, timeMax=timeMax)
-        r = self._get_paginated_data(self.cal_service.events().list, kwargs)
-
-        # If any of the events at this time have the same title as the event, it already exists
-        if [x for x in r if x["summary"] == title]:
-            logging.debug("Event already exists, not adding")
-            return True
+        # Format for events = tuple(name, start, end)
+        for x in self.events:
+            
+            # Check if any events with the same name as this event are at the same time
+            if x[0] == title and (x[1] - start) < fuzz and (x[1] - end) < fuzz:
+                logging.debug("Event already exists, not adding")
+                return True
 
         logging.debug("Event doesn't exist")
         return False
