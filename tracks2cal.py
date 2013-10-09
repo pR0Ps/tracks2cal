@@ -122,15 +122,22 @@ class Tracks2Cal(object):
             if style is not None:
                 placemarks[style.text] = p
 
-        start_time = self._get_placemark_time(placemarks["#start"], ns)
-        end_time = self._get_placemark_time(placemarks["#end"], ns)
         desc = placemarks["#end"].find("{%s}description" % ns).text
 
-        # Convert "long,lat[,altitude]" to "lat,long"
-        temp = placemarks["#start"].find("{%s}Point" % ns).find("{%s}coordinates" % ns).text
-        coords = ",".join(temp.split(",")[1::-1])
+        coords = {}
+        times = {}
+        for x in ("start", "end"):
+            # Convert "long,lat[,altitude]" to "lat,long"
+            temp = placemarks["#" + x].find("{%s}Point" % ns).find("{%s}coordinates" % ns).text
+            coords[x] = ",".join(temp.split(",")[1::-1])
+            
+            # Get start/end times
+            times[x] = self._get_placemark_time(placemarks["#" + x], ns)
 
-        return start_time, end_time, coords, desc
+        desc += "\nStart Location: https://maps.google.ca/maps?q=%(start)s" \
+        "\nEnd Location: https://maps.google.ca/maps?q=%(end)s" % (coords)
+
+        return times, coords, desc
 
     def kml_file_data(self):
         """
@@ -186,7 +193,7 @@ class Tracks2Cal(object):
             logging.critical("Error occurred: %s" % (str(e),))
             return
 
-    def event_exists(self, title, start, end):
+    def event_exists(self, title, times):
         """Checks if the event already exists in Google Calendar"""
 
         logging.debug("Checking if event '%s' exists..." % (title,))
@@ -197,14 +204,14 @@ class Tracks2Cal(object):
         for x in self.events:
             
             # Check if any events with the same name as this event are at the same time
-            if x[0] == title and (x[1] - start) < fuzz and (x[1] - end) < fuzz:
+            if x[0] == title and (x[1] - times["start"]) < fuzz and (x[2] - times["end"]) < fuzz:
                 logging.debug("Event already exists, not adding")
                 return True
 
         logging.debug("Event doesn't exist")
         return False
 
-    def add_event(self, title, start, end, loc="", desc=""):
+    def add_event(self, title, times, coords={}, desc=""):
         """Adds an event to Google Calendar"""
 
         logging.debug("Adding event '%s' to calendar" % (title,))
@@ -212,11 +219,12 @@ class Tracks2Cal(object):
         # Set up event properties
         event = {
             "summary": title,
-            "location": loc,
+            "location": coords.get("start",""),
             "description": desc,
-            "start": dict(dateTime=start.strftime(TIME_OUT_FMT)),
-            "end": dict(dateTime=end.strftime(TIME_OUT_FMT)),
         }
+        # Add start + end times
+        for k, v in times.iteritems():
+            event[k] = dict(dateTime=v.strftime(TIME_OUT_FMT)),
 
         r = self.cal_service.events().insert(calendarId=self.cal_id, body=event).execute()
 
@@ -230,10 +238,10 @@ class Tracks2Cal(object):
         total = 0
         added = 0
         for filename, file_data in self.kml_file_data():
-            start, end, coords, desc = self.parse_kml_data(file_data)
+            times, coords, desc = self.parse_kml_data(file_data)
             total += 1
-            if not self.event_exists(filename, start, end):
-                self.add_event(filename, start, end, coords, desc)
+            if not self.event_exists(filename, times):
+                self.add_event(filename, times, coords, desc)
                 added += 1
 
         logging.critical("Finished successfully!")
