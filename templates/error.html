@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+        <title>MyTracks2Cal</title>
+    </head>
+    <body>
+        <div class="container-full">
+            <div class="row">
+                <div class="col-lg-12 text-center v-center">
+                    <h1>MyTracks2Cal</h1>
+                    <p class="lead">Encountered an error: {{ message }}</p>
+                    <br><br><br>
+                    <form class="col-lg-12" method="GET" action="{{ url_for('index') }}">
+                        <input class="btn btn-lg btn-primary" type="submit" value="Try again">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

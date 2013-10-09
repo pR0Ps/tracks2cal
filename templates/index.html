@@ -11,9 +11,18 @@
                     <h1>MyTracks2Cal</h1>
                     <p class="lead">Add tracks from MyTracks to your Google calendar</p>
                     <br><br><br>
-                    <form class="col-lg-12" method="POST" action="{{ url_for('auth') }}">
+                    {% if need_auth is sameas true %}
+                    <form class="col-lg-12" method="POST" action="{{ url_for('doauth') }}">
+                        <input class="btn btn-lg btn-primary" type="submit" value="Authenticate with Google">
+                    </form>
+                    {% else %}
+                    <form class="col-lg-12" method="POST" action="{{ url_for('run') }}">
                         <input class="btn btn-lg btn-primary" type="submit" value="Start">
                     </form>
+                    <form class="col-lg-12" method="GET" action="{{ url_for('logout') }}">
+                        <input class="btn btn-lg btn-primary" type="submit" value="Logout">
+                    </form>
+                    {% endif %}
                 </div>
             </div>
         </div>
