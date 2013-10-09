@@ -134,10 +134,15 @@ class Tracks2Cal(object):
             # Get start/end times
             times[x] = self._get_placemark_time(placemarks["#" + x], ns)
 
-        desc += "\nStart Location: https://maps.google.ca/maps?q=%(start)s" \
-        "\nEnd Location: https://maps.google.ca/maps?q=%(end)s" % (coords)
-
         return times, coords, desc
+
+    def add_extra_info(self, desc, coords, file_id):
+        """Adds extra information to the description"""
+
+        return desc + \
+            "\nStart Location: https://maps.google.ca/maps?q=%(start)s" \
+            "\nEnd Location: https://maps.google.ca/maps?q=%(end)s" % coords + \
+            "\n\nLink to KML: https://docs.google.com/file/d/%s/view" % file_id
 
     def kml_file_data(self):
         """
@@ -185,7 +190,7 @@ class Tracks2Cal(object):
                 # Download the data of the kml file
                 r, data = self.drive_service._http.request(file_["downloadUrl"])
                 if r.status == 200:
-                    yield filename, data
+                    yield filename, x["id"], data
                 else:
                     logging.warning("Error occurred downloading KML file: %s" % (str(r),))
 
@@ -237,8 +242,12 @@ class Tracks2Cal(object):
         """
         total = 0
         added = 0
-        for filename, file_data in self.kml_file_data():
+        for filename, file_id, file_data in self.kml_file_data():
             times, coords, desc = self.parse_kml_data(file_data)
+
+            # Add extra information to the description
+            desc = self.add_extra_info(desc, coords, file_id)
+
             total += 1
             if not self.event_exists(filename, times):
                 self.add_event(filename, times, coords, desc)
@@ -247,6 +256,7 @@ class Tracks2Cal(object):
         logging.critical("Finished successfully!")
         logging.critical("KML files were taken from the folder '%s' and added to the calendar '%s'" % (self.folder_name, self.cal_name))
         logging.critical("%d new entries were added (from a total of %d parsed)" % (added, total,))
+
 
 def main():
     try:
