@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from flask import Flask, session, request, render_template, redirect
-from oauth2client.client import OAuth2WebServerFlow
+from oauth2client.client import OAuth2WebServerFlow, credentials_from_code
 from tracks2cal import Tracks2Cal
 
 import pickle
@@ -26,7 +26,6 @@ def index():
 def auth():
     # Redirect to OAuth flow
     flow = OAuth2WebServerFlow(CONFIG["client_id"], CONFIG["client_secret"], OAUTH_SCOPE, request.url_root + "run")
-    session["flow"] = pickle.dumps(flow)
     return redirect(flow.step1_get_authorize_url())
 
 @app.route("/run", methods=['GET'])
@@ -34,8 +33,7 @@ def run():
 
     code = request.args.get('code', None)
     if code:
-        flow = pickle.loads(session["flow"])
-        credentials = flow.step2_exchange(code)
+        credentials = credentials_from_code(CONFIG["client_id"], CONFIG["client_secret"], OAUTH_SCOPE, code, request.url_root + "run")
         #Tracks2Cal(credentials).run()
         return "DONE", 200
     else:
