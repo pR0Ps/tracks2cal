@@ -1,6 +1,5 @@
 *.py[cod]
 
-client_secrets.json
-creds.dat
+config.json
 
 venv

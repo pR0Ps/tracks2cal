@@ -26,7 +26,8 @@ Installing the Prerequisites
 Virtual Environment
 ===================
 
-* Create: `virtualenv --distribute venv`
+* Tracks2Cal is python 2 only, make sure you specify the correct executable in the virtual environment.
+* Create: `virtualenv --distribute -p /usr/bin/python venv`
 * Activate: `source venv/bin/activate`
 * Deactivate `deactivate`
 
@@ -38,18 +39,20 @@ Install pip Packages
 OAuth
 =====
 
-This project uses OAuth to connect to Google
+This project uses OAuth to connect to a Google Account.
 
-`client_secrets.json` is used for storing OAuth information
+`config.json` is used for storing OAuth information.
 
-Until I figure out a way to properly distribute this data, it won't be included in the repository.
+Since this file contains private API keys, it isn't included in the repository. There is an example file (`config.json_example`) included instead.
 
 Running the Script
 ==================
 
-1.  Register for API access at `https://code.google.com/apis/console` and download the `client_secrets.json` file into the repository.
-2.  Activate the virtual environment.
-3.  Optional - Open the script and modify the `folder_name` and `cal_name` parameters to suit your setup.
-4.  Run the script.
-5.  Authorize the project to access your Google Drive and Google Calender.
-6.  Wait for all the KML files to be parsed and added to your calendar.
+1.  Copy the `config.json_example` file to `config.json`.
+2.  Register for API access at `https://code.google.com/apis/console` and fill out the config file with the access details.
+3.  Activate the virtual environment.
+4.  Run the `app.py` script.
+5.  Open up a browser and navigate to the webserver.
+6.  Follow the instructions provided by the website.
+
+For running it in anything other than a testing environment, investigate using a dedicated webserver (Nginx, Lighttpd, Apache, etc.).

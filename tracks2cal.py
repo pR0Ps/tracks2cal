@@ -8,10 +8,6 @@ import json
 
 from apiclient.discovery import build
 from apiclient import errors
-from oauth2client.file import Storage
-from oauth2client.client import AccessTokenRefreshError
-from oauth2client.client import flow_from_clientsecrets
-from oauth2client.tools import run
 
 from lxml import etree
 
@@ -20,27 +16,10 @@ import datetime
 TIME_OUT_FMT = "%Y-%m-%dT%H:%M:%SZ"
 TIME_IN_FMT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
-CLIENT_SECRETS = "client_secrets.json"
-
-FLOW = flow_from_clientsecrets(CLIENT_SECRETS,
-    scope=[
-      'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/calendar',
-    ],
-    message="Couldn't find client secrets file at %s" % (CLIENT_SECRETS,))
-
-
 class Tracks2Cal(object):
 
-    def __init__(self, folder_name="My Tracks", cal_name="My Tracks"):
-        """Log in and create authorized service to use the Google API"""
-
-        # Get/store OAuth crediendials
-        storage = Storage('creds.dat')
-        credentials = storage.get()
-
-        if credentials is None or credentials.invalid:
-            credentials = run(FLOW, storage)
+    def __init__(self, credentials, folder_name="My Tracks", cal_name="My Tracks"):
+        """Log in using the given credentials to use the Google API"""
 
         # Authorize an http object to make the requests
         http = httplib2.Http()
@@ -256,16 +235,3 @@ class Tracks2Cal(object):
         logging.critical("Finished successfully!")
         logging.critical("KML files were taken from the folder '%s' and added to the calendar '%s'" % (self.folder_name, self.cal_name))
         logging.critical("%d new entries were added (from a total of %d parsed)" % (added, total,))
-
-
-def main():
-    try:
-        Tracks2Cal().run()
-    except AccessTokenRefreshError:
-        logging.critical("The credentials have been revoked or expired, please re-run the application to re-authorize")
-
-
-if __name__ == '__main__':
-    logging.basicConfig(format="[%(asctime)s][%(levelname)s]: %(message)s", level=logging.DEBUG)
-
-    main()
